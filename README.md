@@ -10,5 +10,5 @@ Dropdowns and Checkboxes:
 - Units
 - Choice to use Raoult's Law in calculations or something else (nonideal, Henry's Law, or Fugacity/Gibbs and the like)
 - Choice of which compound to plot by composition
-- Choice to ignore the temperature ranges for the Antoine equation parameters in calculation
+- Choice to ignore the temperature ranges for the Antoine equation parameters in calculation, web scrapping will find the first set
 - Isobaric or Isothermal (Txy or Pxy)
