@@ -8,25 +8,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.font_manager as font_manager
 import numpy as np
-import traceback
+
 
 # Goal: Draw Dew/Bubble curves for VLE system
-# MVP Done
-# TODO: fix errors and extra popup windows, more error catching, custom error classes
-    # maybe list possible reasons for user to fix
-# TODO: front end, look nice, resize, alignment #next
-    # Display plotted points?
-    # Hover to see point? May be complicated
-        # Need a way to actually have a use for this instead of just visual
-    # state of matter labels?
-# TODO: Functional Antoine range checkbutton
-    # if true, operate as normal, else if calc temp out of range send error? or leave out points and scatter plot?
-# TODO: FINAL: Clean Up/Reduce Clutter
-
-# TODO: STRETCH: non-ideal calculations with user choice of method?
-# TODO: STRETCH: create actual application rather than using IDE
-# TODO: STRETCH: hovers for checkbuttons to display what they do
-# TODO: STRETCH: add change specificity for calculations, changing linspace
 
 
 class Compound:
@@ -181,7 +165,6 @@ class Compound:
     # solves for nonideal case: fugacity, not done
     def yNonId(self):
         pass
-    # plots curves (needed?)
 
 
 class UserInputs(tk.Frame):
@@ -304,44 +287,48 @@ class MainApplication(tk.Frame):
         # set focus
         self.inputs.ent_Name1.focus_set()
 
+    # finished?
     def inputReq(self):
         try:
             entries = [self.inputs.ent_Name1, self.inputs.ent_Name2]
-            namesFilled = 0
+            namesFilled = 0 # initialize
             for i in range(0, len(entries)):
                 if entries[i].get():
                     namesFilled = 1
                 else:
-                    raise Exception #temp error catch
-                    break
+                    if i == 1: # compound 2 blank, and passed compound 1
+                        raise InputError('Compound 2')
+                    else: # else compound 1 blank
+                        raise InputError('Compound 1')
             if namesFilled == 1:
                 userTP = [self.inputs.ent_Pres, self.inputs.ent_Temp]
-                filledTP = 0
+                filledTP = 0 # initialize
                 for i in range(0, len(userTP)):
                     if userTP[i].get():
                         filledTP = 1 # set to 1 if element exists
                     else:
                         filledTP = 0
-                        break
+                        break # breaks, at least one missing
                 if filledTP == 1:
                     return True
                 else:
-                    return False # at least one item doesn't exist, T or P
+                    return False # at least one item doesn't exist, T or P, will later set to default values for calc
+        except InputError as e:
+            messagebox.showwarning('Error', e)
+            self.inputError = 1 # sets sentry for later
+            if not self.inputs.ent_Name1.get(): # sets focus to blank box
+                entries[0].focus_set()
             else:
-                return False
-        except:
-            self.inputError = 1 # sentry value if something goes wrong
-            error = Error('inputError')
-            error.displayErr()
-            entries[0].focus_set() # change focus to empty box ### fix
+                entries[1].focus_set()
 
     # workaround for key input to continue
     def calcEnter(self, event):
         self.calculate()
 
+
     def calculate(self):
         #fix selective inputs
-        if self.inputReq():  # checks required entries, continues if all filled, maybe runs with STP if not filled?
+        if self.inputReq():  # checks required entries, continues if all filled,
             # convert values to user choice: antoine (calculate normal then convert), graph
             self.presUnitUse = self.inputs.presUnitVar.get()
             self.tempUnitUse = self.inputs.tempUnitVar.get()
@@ -372,7 +359,6 @@ class MainApplication(tk.Frame):
 
             if not self.inputs.ent_Pres.get():
                 self.pTot = 1.01325  # bar
-                print('auto', self.pTot)
             elif self.presUnitUse != 'bar':
                 if self.presUnitUse == 'atm':
                     self.pTot = float(self.inputs.ent_Pres.get()) * 1.01325
@@ -387,7 +373,6 @@ class MainApplication(tk.Frame):
 
             if not self.inputs.ent_Temp.get():
                 self.temp = 273.15  # K
-                print('auto T', self.temp)
             elif self.tempUnitUse != 'K': # if top doesn't go through, user has provided temp
                 if self.tempUnitUse == 'C':
                     self.temp = float(self.inputs.ent_Temp.get()) + 273.15
@@ -397,220 +382,219 @@ class MainApplication(tk.Frame):
                 self.temp = float(self.inputs.ent_Temp.get())
 
         try:
+            # not an error case, just doesn't create window if required input is missing
             if self.inputError != 1:
                 # Initialized
                 compList = []
                 compObjList = []
                 self.tRangeError = 0 # sentry for antoine range errors
 
-                try:  # Check for best fitting antoine range with given temperature,
+                # changes order based on user choice
+                if self.chkbuttons.var_comp.get():
+                    names = [self.inputs.ent_Name2.get(), self.inputs.ent_Name1.get()]
+                else:
+                    names = [self.inputs.ent_Name1.get(), self.inputs.ent_Name2.get()]
 
-                    # changes order based on user choice
-                    if self.chkbuttons.var_comp.get():
-                        names = [self.inputs.ent_Name2.get(), self.inputs.ent_Name1.get()]
-                    else:
-                        names = [self.inputs.ent_Name1.get(), self.inputs.ent_Name2.get()]
+                # checks if care about temperature range, if ignore, use first set of paramters
+                # Using Range also needs to update while plotting
+                if self.chkbuttons.var_tRangeIgnore.get():
+                    for j in range(0, 2):  # Creates objects Compound for each input
+                        name = names[j]
+                        compList.append(name)
+                        antList = self.antoineParameters(name)
 
-                    # checks if care about temperature range, if ignore, use first set of paramters
-                    # Using Range also needs to update while plotting
-                    if self.chkbuttons.var_tRangeIgnore.get():
-                        for j in range(0, 2):  # Creates objects Compound for each input
-                            name = names[j]
-                            compList.append(name)
-                            antList = self.antoineParameters(name)
-
-                            useSet = antList[0] # using first set of data
-                            tRange = useSet[0] # no need for range checking
-                            aVal = float(useSet[1])
+                        useSet = antList[0] # using first set of data
+                        tRange = useSet[0] # no need for range checking
+                        aVal = float(useSet[1])
+                        bVal = float(useSet[2])
+                        cVal = float(useSet[3])
+                        boilP = self.boilPoint(name)
+                        name = Compound(name, tRange, aVal, bVal, cVal, boilP)
+                        compObjList.append(name)
+                else: # Use temperature ranges
+                    for j in range(0, 2):
+                        name = names[j]
+                        compList.append(name)
+                        antList = self.antoineParameters(name)
+                        useSet = [] # initialize
+                        for i in range(0, len(antList)):
+                            useSet = antList[i]
+                            tRange = useSet[0]
+                            tLow = tRange.split(" - ")[0]
+                            tHigh = tRange.split(" - ")[1]
+                            if float(tLow) <= self.temp and float(tHigh) >= self.temp:
+                                break # breaks loop if temp within range
+                            else:
+                                if i == len(antList) - 1: # happens when currently on last listed antoine set
+                                    useSet = []
+                        if useSet != []: #if empty, means temperature is out of antoine range ### double error message here
+                            aVal = float(useSet[1])  # if error occurs here, temp out of range likely
                             bVal = float(useSet[2])
                             cVal = float(useSet[3])
                             boilP = self.boilPoint(name)
                             name = Compound(name, tRange, aVal, bVal, cVal, boilP)
                             compObjList.append(name)
-                    else: # Use temperature ranges
-                        for j in range(0, 2):
-                            name = names[j]
-                            compList.append(name)
-                            antList = self.antoineParameters(name)
-                            for i in range(0, len(antList)):
-                                useSet = antList[i]
-                                tRange = useSet[0]
-                                tLow = tRange.split(" - ")[0]
-                                tHigh = tRange.split(" - ")[1]
-                                if float(tLow) <= self.temp and float(tHigh) >= self.temp:
-                                    break
-                                else:
-                                    if i == len(antList) - 1:
-                                        useSet = []
-                            if useSet != []: #if empty, means temperature is out of antoine range ### double error message here
-                                aVal = float(useSet[1])  # if error occurs here, temp out of range likely
-                                bVal = float(useSet[2])
-                                cVal = float(useSet[3])
-                                boilP = self.boilPoint(name)
-                                name = Compound(name, tRange, aVal, bVal, cVal, boilP)
-                                compObjList.append(name)
-                            else:
-                                self.tRangeError = 1
+                        else:
+                            self.tRangeError = 1
+                            raise TempRangeError(name, self.temp, self.inputs.tempUnitVar.get())
 
-                    if self.tRangeError != 1:
-                        # Pop up window for plot and information
-                        self.win2 = tk.Toplevel()
-                        self.win2.title('VLE Results')
-                        self.win2.minsize(width=1024, height=512)
-                        self.win2.resizable(False, False)
+                # only runs if there is no error in the temperature ranges
+                if self.tRangeError != 1:
+                    # Pop up window for plot and information
+                    self.win2 = tk.Toplevel()
+                    self.win2.title('VLE Results')
+                    self.win2.minsize(width=1024, height=512)
+                    self.win2.resizable(False, False)
 
-                        # Checks if Temperature is in range for both compounds, only continues if true #fix error catch in else here
-                        self.strChoices = "Ideal Mixture: \nIgnore Antoine Temperature Range: \nUsing Component 2 as Basis: \nIsoBaric: \nIsoThermal:"
-                        self.strAnswers = "{} \n{} \n{} \n{} \n{}".format(
-                            self.chkbuttons.var_idl.get(),
-                            self.chkbuttons.var_tRangeIgnore.get(),
-                            self.chkbuttons.var_comp.get(), self.chkbuttons.var_IsoBar.get(),
-                            self.chkbuttons.var_IsoTherm.get())
-                        #display chosen constant variable
-                        #color code true/false?
-                        if self.chkbuttons.var_IsoBar.get():
-                            self.strChoices = self.strChoices + "\nConstant Pressure :"
-                            if self.inputs.ent_Pres.get():
-                                self.strAnswers = self.strAnswers + "\n{} {}".format(self.inputs.ent_Pres.get(), self.inputs.presUnitVar.get())
+                    # Checks if Temperature is in range for both compounds, only continues if true #fix error catch in else here
+                    self.strChoices = "Ideal Mixture: \nIgnore Antoine Temperature Range: \nUsing Component 2 as Basis: \nIsoBaric: \nIsoThermal:"
+                    self.strAnswers = "{} \n{} \n{} \n{} \n{}".format(
+                        self.chkbuttons.var_idl.get(),
+                        self.chkbuttons.var_tRangeIgnore.get(),
+                        self.chkbuttons.var_comp.get(), self.chkbuttons.var_IsoBar.get(),
+                        self.chkbuttons.var_IsoTherm.get())
+
+                    #display chosen constant variable
+                    #color code true/false?
+                    if self.chkbuttons.var_IsoBar.get():
+                        self.strChoices = self.strChoices + "\nConstant Pressure :"
+                        if self.inputs.ent_Pres.get():
+                            self.strAnswers = self.strAnswers + "\n{} {}".format(self.inputs.ent_Pres.get(), self.inputs.presUnitVar.get())
+                        else:
+                            pUse = 0
+                            if self.presUnitUse == 'atm':
+                                pUse = self.pTot / 1.01325
+                            elif self.presUnitUse == 'mmHg':
+                                pUse = self.pTot / 1.01325 * 760
+                            elif self.presUnitUse == 'Pa':
+                                pUse = self.pTot * 100000
+                            elif self.presUnitUse == 'kPa':
+                                pUse = self.pTot * 100
                             else:
-                                pUse = 0
-                                if self.presUnitUse == 'atm':
-                                    pUse = self.pTot / 1.01325
-                                elif self.presUnitUse == 'mmHg':
-                                    pUse = self.pTot / 1.01325 * 760
-                                elif self.presUnitUse == 'Pa':
-                                    pUse = self.pTot * 100000
-                                elif self.presUnitUse == 'kPa':
-                                    pUse = self.pTot * 100
-                                else:
-                                    pUse = self.pTot
-                                self.strAnswers = self.strAnswers + "\n{} {}".format(pUse, self.inputs.presUnitVar.get())
-                        elif self.chkbuttons.var_IsoTherm.get():
-                            self.strChoices = self.strChoices + "\nConstant Temperature :"
-                            if self.inputs.ent_Temp.get():
-                                self.strAnswers = self.strAnswers + "\n{} {}".format(self.inputs.ent_Temp.get(), self.inputs.tempUnitVar.get())
+                                pUse = self.pTot
+                            self.strAnswers = self.strAnswers + "\n{} {}".format(pUse, self.inputs.presUnitVar.get())
+                    elif self.chkbuttons.var_IsoTherm.get():
+                        self.strChoices = self.strChoices + "\nConstant Temperature :"
+                        if self.inputs.ent_Temp.get():
+                            self.strAnswers = self.strAnswers + "\n{} {}".format(self.inputs.ent_Temp.get(), self.inputs.tempUnitVar.get())
+                        else:
+                            tUse = 0
+                            if self.tempUnitUse == 'C':
+                                tUse = self.temp - 273.15
+                            elif self.tempUnitUse == 'F':
+                                tUse = (self.temp - 273.15) * 9 / 5 + 32
                             else:
-                                tUse = 0
+                                tUse = self.temp
+                            self.strAnswers = self.strAnswers + "\n{} {}".format(tUse, self.inputs.tempUnitVar.get())
+
+                    # prints data and information about calculation, includes compounds and user choices
+                    self.descFrm = tk.Frame(master=self.win2)
+                    self.descFrm.pack(side="left", fill='y')
+                    self.descTitle = tk.Label(master=self.descFrm, text="Mixture Information :", font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.chkChoices = tk.Label(master=self.descFrm, text=self.strChoices, justify='left', font=('Times New Roman', 16))
+                    self.chkAnswers = tk.Label(master=self.descFrm, text=self.strAnswers, justify='left', font=('Times New Roman', 16))
+                    self.nameComp1 = tk.Label(master=self.descFrm, text=(compObjList[0].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.nameComp2 = tk.Label(master=self.descFrm, text=(compObjList[1].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.descComp1 = tk.Label(master=self.descFrm, text=compObjList[0].description(), justify='left', font=('Times New Roman', 16))
+                    self.descComp2 = tk.Label(master=self.descFrm, text=compObjList[1].description(), justify='left', font=('Times New Roman', 16))
+
+                    self.descTitle.grid(row=0, column=0, sticky='w')
+
+                    self.chkChoices.grid(row=1, column=0, sticky='w')
+                    self.chkAnswers.grid(row=1, column=1, sticky='w')
+
+                    self.nameComp1.grid(row=3, column=0, sticky='w')
+                    self.descComp1.grid(row=4, column=0, sticky='w')
+
+                    self.nameComp2.grid(row=6, column=0, sticky='w')
+                    self.descComp2.grid(row=7, column=0, sticky='w')
+
+                    self.descFrm.rowconfigure((2, 5), minsize=20)
+
+                    # calculations
+                    xVals = np.linspace(0, 1, 11)  # add change specificity
+                    yVals = np.linspace(0, 1, 11)
+                    if self.chkbuttons.var_IsoBar.get():
+                        tLB = compObjList[0].bubbleIsoBar(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        tLD = compObjList[0].dewIsoBar(yVals, compObjList, self.temp, self.pTot)
+                        xPlot1 = tLB[0]
+                        xPlot2 = tLD[0]
+                        tempB = []
+                        tempD = []
+
+                        # convert calculated temperatures to user units
+                        if self.tempUnitUse != 'K':
+                            for i in range(0, len(tLB[0])):
                                 if self.tempUnitUse == 'C':
-                                    tUse = self.temp - 273.15
+                                    tempB.append(tLB[1][i] - 273.15)
                                 elif self.tempUnitUse == 'F':
-                                    tUse = (self.temp - 273.15) * 9 / 5 + 32
-                                else:
-                                    tUse = self.temp
-                                self.strAnswers = self.strAnswers + "\n{} {}".format(tUse, self.inputs.tempUnitVar.get())
+                                    tempB.append((tLB[1][i] - 273.15)*9/5 + 32)
 
-                        # prints data and information about calculation, includes compounds and user choices
-                        self.descFrm = tk.Frame(master=self.win2)
-                        self.descFrm.pack(side="left", fill='y')
-                        self.descTitle = tk.Label(master=self.descFrm, text="Mixture Information :", font=('Times New Roman', 18, 'bold', 'underline'))
-                        self.chkChoices = tk.Label(master=self.descFrm, text=self.strChoices, justify='left', font=('Times New Roman', 16))
-                        self.chkAnswers = tk.Label(master=self.descFrm, text=self.strAnswers, justify='left', font=('Times New Roman', 16))
-                        self.nameComp1 = tk.Label(master=self.descFrm, text=(compObjList[0].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
-                        self.nameComp2 = tk.Label(master=self.descFrm, text=(compObjList[1].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
-                        self.descComp1 = tk.Label(master=self.descFrm, text=compObjList[0].description(), justify='left', font=('Times New Roman', 16))
-                        self.descComp2 = tk.Label(master=self.descFrm, text=compObjList[1].description(), justify='left', font=('Times New Roman', 16))
+                            for i in range(0, len(tLD[0])):
+                                if self.tempUnitUse == 'C':
+                                    tempD.append(tLD[1][i] - 273.15)
+                                elif self.tempUnitUse == 'F':
+                                    tempD.append((tLD[1][i] - 273.15) * 9 / 5 + 32)
+                            tLB = tempB
+                            tLD = tempD
+                        else:
+                            tLB = tLB[1]
+                            tLD = tLD[1]
 
-                        self.descTitle.grid(row=0, column=0, sticky='w')
+                        # plot
+                        self.plottingIsoBar(xPlot1, tLB, xPlot2, tLD, compList)
+                    elif self.chkbuttons.var_IsoTherm.get():
+                        pLB = compObjList[0].bubbleIsoTherm(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        pLD = compObjList[0].dewIsoTherm(yVals, compObjList, self.temp)
+                        xPlot1 = pLB[0]
+                        xPlot2 = pLD[0]
+                        tempB = []
+                        tempD = []
 
-                        self.chkChoices.grid(row=1, column=0, sticky='w')
-                        self.chkAnswers.grid(row=1, column=1, sticky='w')
+                        # convert calculated pressures to user units
+                        if self.presUnitUse != 'bar':
+                            for i in range(0, len(pLB[0])):
+                                if self.presUnitUse == 'atm':
+                                    tempB.append(pLB[1][i] / 1.01325)
+                                elif self.presUnitUse == 'mmHg':
+                                    tempB.append(pLB[1][i] / 1.01325 * 760)
+                                elif self.presUnitUse == 'Pa':
+                                    tempB.append(pLB[1][i] * 100000)
+                                elif self.presUnitUse == 'kPa':
+                                    tempB.append(pLB[1][i] * 100)
 
-                        self.nameComp1.grid(row=3, column=0, sticky='w')
-                        self.descComp1.grid(row=4, column=0, sticky='w')
+                            for i in range(0, len(pLD[0])):
+                                if self.presUnitUse == 'atm':
+                                    tempD.append(pLD[1][i] / 1.01325)
+                                elif self.presUnitUse == 'mmHg':
+                                    tempD.append(pLD[1][i] / 1.01325 * 760)
+                                elif self.presUnitUse == 'Pa':
+                                    tempD.append(pLD[1][i] * 100000)
+                                elif self.presUnitUse == 'kPa':
+                                    tempD.append(pLD[1][i] * 100)
+                            pLB = tempB
+                            pLD = tempD
+                        else:
+                            pLB = pLB[1]
+                            pLD = pLD[1]
 
-                        self.nameComp2.grid(row=6, column=0, sticky='w')
-                        self.descComp2.grid(row=7, column=0, sticky='w')
+                        # plot
+                        self.plottingIsoTherm(xPlot1, pLB, xPlot2, pLD, compList)
 
-                        self.descFrm.rowconfigure((2, 5), minsize=20)
+                    # Creates border inbetween text and plot
+                    self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2, height=self.win2.winfo_height()).pack(side="left")
 
-                        # calculations
-                        xVals = np.linspace(0, 1, 11)  # add change specificity
-                        yVals = np.linspace(0, 1, 11)
-                        if self.chkbuttons.var_IsoBar.get():
-                            print(self.temp, self.pTot)
-                            tLB = compObjList[0].bubbleIsoBar(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
-                            tLD = compObjList[0].dewIsoBar(yVals, compObjList, self.temp, self.pTot)
-                            xPlot1 = tLB[0]
-                            xPlot2 = tLD[0]
-                            tempB = []
-                            tempD = []
-
-                            # convert calculated temperatures to user units
-                            if self.tempUnitUse != 'K':
-                                for i in range(0, len(tLB[0])):
-                                    if self.tempUnitUse == 'C':
-                                        tempB.append(tLB[1][i] - 273.15)
-                                    elif self.tempUnitUse == 'F':
-                                        tempB.append((tLB[1][i] - 273.15)*9/5 + 32)
-
-                                for i in range(0, len(tLD[0])):
-                                    if self.tempUnitUse == 'C':
-                                        tempD.append(tLD[1][i] - 273.15)
-                                    elif self.tempUnitUse == 'F':
-                                        tempD.append((tLD[1][i] - 273.15) * 9 / 5 + 32)
-                                tLB = tempB
-                                tLD = tempD
-                            else:
-                                tLB = tLB[1]
-                                tLD = tLD[1]
-                            # plot
-
-                            self.plottingIsoBar(xPlot1, tLB, xPlot2, tLD, compList)
-                        elif self.chkbuttons.var_IsoTherm.get():
-                            pLB = compObjList[0].bubbleIsoTherm(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
-                            pLD = compObjList[0].dewIsoTherm(yVals, compObjList, self.temp)
-                            xPlot1 = pLB[0]
-                            xPlot2 = pLD[0]
-                            tempB = []
-                            tempD = []
-                            # convert calculated pressures to user units
-                            if self.presUnitUse != 'bar':
-                                for i in range(0, len(pLB[0])):
-                                    if self.presUnitUse == 'atm':
-                                        tempB.append(pLB[1][i] / 1.01325)
-                                    elif self.presUnitUse == 'mmHg':
-                                        tempB.append(pLB[1][i] / 1.01325 * 760)
-                                    elif self.presUnitUse == 'Pa':
-                                        tempB.append(pLB[1][i] * 100000)
-                                    elif self.presUnitUse == 'kPa':
-                                        tempB.append(pLB[1][i] * 100)
-
-                                for i in range(0, len(pLD[0])):
-                                    if self.presUnitUse == 'atm':
-                                        tempD.append(pLD[1][i] / 1.01325)
-                                    elif self.presUnitUse == 'mmHg':
-                                        tempD.append(pLD[1][i] / 1.01325 * 760)
-                                    elif self.presUnitUse == 'Pa':
-                                        tempD.append(pLD[1][i] * 100000)
-                                    elif self.presUnitUse == 'kPa':
-                                        tempD.append(pLD[1][i] * 100)
-                                pLB = tempB
-                                pLD = tempD
-                            else:
-                                pLB = pLB[1]
-                                pLD = pLD[1]
-                            # plot
-                            self.plottingIsoTherm(xPlot1, pLB, xPlot2, pLD, compList)
-
-                        # Creates border inbetween text and plot
-                        self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2, height=self.win2.winfo_height()).pack(side="left")
-                    else:
-                        error = Error('tempRange')
-                        error.displayErr()
-                        self.tRangeError = 0
-                except Exception as e:
-                    error = Error('AntoineError')
-                    error.displayErr()
-                    print(e)
                 # add functionality to clear previous so consecutive entries dont break it
 
                 self.win2.mainloop()
             else:
-                self.inputError = 0
-        except Exception as e:
-            error = Error('windowError')
-            error.displayErr()
+                self.inputError = 0 # resets input error sentry
+        except TempRangeError as e:
+            self.tRangeError = 0 # resets error sentry
+            messagebox.showwarning('Error', e)
+        except Exception as e: # general catch, temp
             print(e)
+
 
     # Getting Compound Data from NIST Webbook
     def antoineParameters(self, compound):
@@ -642,13 +626,11 @@ class MainApplication(tk.Frame):
                             tabulatedVal.append(children[j].text)
                     Trange.append(tabulatedVal)
             if (Trange == []):
-                raise Exception #temp error case
-                return
+                raise AntoineError(compound)
             else:
                 return Trange
-        except:
-            error = Error('AntoineError')
-            error.displayErr()
+        except AntoineError as e:
+            messagebox.showwarning('Error', e)
 
     # Get Boiling Point Data from NIST
     def boilPoint(self, compound):
@@ -683,24 +665,26 @@ class MainApplication(tk.Frame):
                                     boilT = boilAll.split(" ± ")[0]
                                 else:
                                     boilT = boilAll
-            if (boilT == 0):
+            if boilT == 0:
                 for i in soup.find_all("tr", {"class": "exp"}):
-                    if ('One dimensional data' in i.parent.attrs.values()):
+                    if 'One dimensional data' in i.parent.attrs.values():
                         children = i.findChildren('td')
                         for j in range(0, len(children)):
-                            if (children[j].text == "Tboil"):
-                                if (children[j + 1].text[0].isalpha() == False):
+                            if children[j].text == "Tboil":
+                                if children[j + 1].text[0].isalpha() == False:
                                     boilAll = children[j + 1].text
-                                    if (" ± " in boilAll):
+                                    if " ± " in boilAll:
                                         boilT = boilAll.split(" ± ")[0]
                                     else:
                                         boilT = boilAll
-                return boilT
+                if boilT == 0:
+                    raise BoilPointError(compound)
+                else:
+                    return boilT
             else:
                 return boilT
-        except:
-            error = Error('boilPoint')
-            error.displayErr()
+        except BoilPointError as e:
+            messagebox.showwarning('Error', e)
 
     def plottingIsoBar(self, xVals, tempListBub, yVals, tempListDew, compList):
         fig = Figure(figsize=(6, 6))
@@ -740,21 +724,89 @@ class Error:
     # Error with finding antoine parameters
     def __init__(self, errType, *args, **kwargs):
         self.errType = errType
-        if self.errType == 'inputError':
-            self.errMsg = 'A required input is missing'
-        elif errType == 'tempRange':
-            self.errMsg = "The given temperature range does not fit both compounds' Antoine Parameters"
-        elif errType == 'AntoineError':
-            self.errMsg = 'An Error occurred while looking for Antoine Data for one or more of the compounds'
-        elif errType == 'boilPoint':
-            self.errMsg = 'An issue occurred while looking for the Boiling Point for one or more of the compound.'
-        elif errType == 'windowError':
+        if errType == 'windowError':
             self.errMsg = 'An issue occurred while generating plots.'
         else:
             self.errMsg = 'An Error Has Occurred'
 
     def displayErr(self):
         messagebox.showwarning('Error', self.errMsg)
+
+
+class InputError(Exception):
+    """ Error Raised when user inputs are missing: Compound names
+    Attributes:
+        missing -- which compound(s) is/are missing
+    """
+
+    def __init__(self, missing):
+        self.missing = missing
+
+    def __str__(self):
+        #errorBox = ErrorPopUp(self.missing)
+        return 'Required User Input Missing: {}'.format(self.missing)
+
+
+class AntoineError(Exception):
+    """ Error raised when an problem occurs in web scrapping for Antoine Equation data
+    Attributes:
+
+    """
+
+    def __init__(self, compound):
+        self.compound = compound
+
+    def __str__(self):
+        return 'No Antoine Parameter Data Found for the compound: {}'.format(self.compound)
+
+
+class TempRangeError(Exception):
+    """ Error raised when the specified temperature is not within the Antoine Data. Only Applicable when "Ignore Antoine
+    Range" is NOT selected
+    Attributes:
+        Compound -- Which Compound caused the error
+        Temp -- What temperature wasn't in any Antoine Parameter ranges
+        Units -- Units for temperature
+    """
+
+    def __init__(self, compound, temp, units):
+        self.compound = compound
+        self.temp = temp
+        self.units = units
+
+    def __str__(self): # add color to user inputs
+        return 'No Antoine Parameters Could Be Found For the Compound {} at the Given Temperature of {} {}'.format(self.compound, self.temp, self.units)
+
+
+class BoilPointError(Exception):
+    """ Error raised if the boiling point of a compound can't be found ## is this needed anymore?
+    Attributes:
+        Compound -- Which Compound caused the error
+    """
+
+    def __init__(self, compound):
+        self.compound = compound
+
+    def __str__(self): # add color to user inputs
+        return 'The Boiling Point for {} Could Not Be Found'.format(self.compound)
+
+
+# Customs MessageBox for color purposes
+class ErrorPopUp:
+    def __init__(self, message, *args, **kwargs):
+        self.errorBox = tk.Tk()
+        self.errorBox.title('Error')
+
+        self.errorMsgLbl = tk.Label(master=self.errorBox, text=message, font=('Times New Roman', 16), fg='red')
+        self.errorMsgLbl.pack(side='top')
+
+        self.okBtn = tk.Button(master=self.errorBox, text='Ok', command=self.ok, activebackground="blue", font=('Times New Roman', 16))
+        self.okBtn.pack(side='bottom')
+
+        self.errorBox.mainloop()
+
+    def ok(self):
+        self.destroy()
 
 
 def runApp():
@@ -764,3 +816,4 @@ def runApp():
 
 
 runApp()
+error = ErrorPopUp('Compound 1')
