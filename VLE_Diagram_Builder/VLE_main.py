@@ -93,8 +93,6 @@ class CheckButtons(tk.Frame):
         self.cbIsoTherm.grid(row=4, column=0, sticky='w')
         self.var_IsoTherm.set(True)
 
-        #ToolTip.CreateToolTip(self.cbIdl, text='Test')
-
     # IsoBar and IsoTherm are mutually exclusive, clicking one toggles the other
     def toggleBar(self):
         self.cbIsoBar.toggle()
@@ -139,6 +137,7 @@ class MainApplication(tk.Frame):
         # set focus
         self.inputs.ent_Name1.focus_set()
 
+        # Hover Tooltip descriptions
         ToolTip.CreateToolTip(self.calcBtn, text='Click this button to create the VLE diagram.')
 
         ToolTip.CreateToolTip(self.inputs.ent_Name1, text='Enter the name of a chemical compound')
@@ -196,7 +195,9 @@ class MainApplication(tk.Frame):
                 else:
                     return False # at least one item doesn't exist, T or P, will later set to default values for calc
         except InputError as e:
-            messagebox.showwarning('Error', e)
+            e.__str__()
+            # msg = messagebox.showwarning('Error', e)
+
             self.inputError = 1 # sets sentry for later
             if not self.inputs.ent_Name1.get(): # sets focus to blank box
                 entries[0].focus_set()
@@ -322,6 +323,23 @@ class MainApplication(tk.Frame):
                     self.win2 = tk.Toplevel()
                     self.win2.title('VLE Results')
                     self.win2.minsize(width=1024, height=512)
+
+                    # Code from SO user - xxmbabanexx; sets open position for window based on screen dimensions
+                    w = 1024  # width for the Tk root
+                    h = 600  # height for the Tk root
+
+                    # get screen width and height
+                    ws = self.win2.winfo_screenwidth()  # width of the screen
+                    hs = self.win2.winfo_screenheight()  # height of the screen
+
+                    # calculate x and y coordinates for the Tk root window
+                    x = (ws / 2) - (w / 2)
+                    y = (hs / 2) - (h / 2)
+
+                    # set the dimensions of the screen
+                    # and where it is placed
+                    self.win2.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
                     self.win2.resizable(False, False)
 
                     # Checks if Temperature is in range for both compounds, only continues if true #fix error catch in else here
@@ -469,8 +487,9 @@ class MainApplication(tk.Frame):
                 self.inputError = 0 # resets input error sentry
         except TempRangeError as e:
             self.tRangeError = 0 # resets error sentry
-            messagebox.showwarning('Error', e)
-        except Exception as e: # general catch, temp
+            e.__str__()
+            # messagebox.showwarning('Error', e)
+        except Exception as e: # general catch, temporary
             print(e)
 
 
@@ -508,7 +527,8 @@ class MainApplication(tk.Frame):
             else:
                 return Trange
         except AntoineError as e:
-            messagebox.showwarning('Error', e)
+            e.__str__()
+            # messagebox.showwarning('Error', e)
 
     # Get Boiling Point Data from NIST
     def boilPoint(self, compound):
@@ -562,7 +582,8 @@ class MainApplication(tk.Frame):
             else:
                 return boilT
         except BoilPointError as e:
-            messagebox.showwarning('Error', e)
+            e.__str__()
+            # messagebox.showwarning('Error', e)
 
     def plottingIsoBar(self, xVals, tempListBub, yVals, tempListDew, compList):
         fig = Figure(figsize=(6, 6))
@@ -608,9 +629,10 @@ class InputError(Exception):
         self.missing = missing
 
     def __str__(self):
-        message = 'Required User Input Missing: '
-        #ErrorPopUp(message, self.missing)
-        return 'Required User Input Missing: {}'.format(self.missing)
+        message = 'The Following Required User Input is Missing: '
+        ErrorPopUp(message, self.missing)
+        return
+        # return 'Required User Input Missing: {}'.format(self.missing)
 
 
 class AntoineError(Exception):
@@ -623,7 +645,10 @@ class AntoineError(Exception):
         self.compound = compound
 
     def __str__(self):
-        return 'No Antoine Parameter Data Found for the compound: {}'.format(self.compound)
+        message = 'No Antoine Parameter Data Found for the Following Compound: '
+        ErrorPopUp(message, self.compound)
+        return
+        # return 'No Antoine Parameter Data Found for the compound: {}'.format(self.compound)
 
 
 class TempRangeError(Exception):
@@ -641,7 +666,11 @@ class TempRangeError(Exception):
         self.units = units
 
     def __str__(self): # add color to user inputs
-        return 'No Antoine Parameters Could Be Found For the Compound {} at the Given Temperature of {} {}'.format(self.compound, self.temp, self.units)
+        message = 'No Antoine Parameters Could Be Found For the Following: '
+        errorCombined = self.compound + ' at ' + str(self.temp) + ' ' + self.units
+        ErrorPopUp(message, errorCombined)
+        return
+        # return 'No Antoine Parameters Could Be Found For the Compound {} at the Given Temperature of {} {}'.format(self.compound, self.temp, self.units)
 
 
 class BoilPointError(Exception):
@@ -654,38 +683,106 @@ class BoilPointError(Exception):
         self.compound = compound
 
     def __str__(self): # add color to user inputs
-        return 'The Boiling Point for {} Could Not Be Found'.format(self.compound)
+        message = 'The Boiling Point for the Following Compound Could Not Be Found: '
+        ErrorPopUp(message, self.compound)
+        return
+        # return 'The Boiling Point for {} Could Not Be Found'.format(self.compound)
 
 
 # Customs MessageBox for color purposes
 class ErrorPopUp:
     def __init__(self, message, compound, *args, **kwargs):
-        self.errorBox = tk.Tk()
+        self.errorBox = tk.Toplevel()
+
         self.errorBox.title('Error')
 
-        self.errFrame = tk.Frame(master=self.errorBox)
-        self.errFrame.pack(side='top')
+        self.errFrame = tk.Frame(master=self.errorBox, bg='#f0f0f0')
+        self.errFrame.grid(row=0, column=0)
 
-        self.errorMsgLbl = tk.Label(master=self.errFrame, text=message, font=('Times New Roman', 16), fg='black')
-        self.errorMsgLbl.pack(side='left')
+        self.errorMsgLbl = tk.Label(master=self.errFrame, text=message, font=('Times New Roman', 12), fg='black')
+        self.errorMsgLbl.grid(row=0, column=0, padx=5)
 
-        self.errorCompLbl = tk.Label(master=self.errFrame, text=compound, font=('Times New Roman', 16), fg='red')
-        self.errorCompLbl.pack(side='right')
+        self.errorCompLbl = tk.Label(master=self.errFrame, text=compound, font=('Times New Roman', 12), fg='red')
+        self.errorCompLbl.grid(row=1, column=0, padx=5)
 
-        self.okBtn = tk.Button(master=self.errorBox, text='Ok', command=self.ok, activebackground="blue", font=('Times New Roman', 16))
-        self.okBtn.pack(side='bottom')
+        self.btnFrame = tk.Frame(master=self.errorBox, bg='#c0c0c0')
+        self.btnFrame.grid(row=1, column=0, sticky='NESW')
 
-        self.errorBox.mainloop()
+        self.okBtn = tk.Button(master=self.btnFrame, text='Ok', command=self.ok, activebackground="blue", font=('Times New Roman', 12))
+        self.okBtn.grid(row=0, column=4, sticky='EW', pady=5)
+
+        self.btnFrame.columnconfigure([0, 1, 2, 3, 4, 5], weight=1)
+        self.errorBox.rowconfigure(0, weight=2)
+
+        self.errorBox.bind('<Return>', self.okEnt) # binds return/enter key to ok btn
+
+        self.errorBox.protocol("WM_DELETE_WINDOW", self.ok) # window close protocol
+
+        self.errorBox.focus_set() # grabs focus
+        self.errorBox.grab_set() # locks interaction to error window
+
+        self.errorMsgLbl.update()
+
+        # Code from SO user - xxmbabanexx; sets open position for window based on screen dimensions
+        w = self.errorMsgLbl.winfo_width() + 10  # width for the Tk root, adjusts to size of error message + padding
+        h = 128  # height for the Tk root
+
+        # get screen width and height
+        ws = self.errorBox.winfo_screenwidth()  # width of the screen
+        hs = self.errorBox.winfo_screenheight()  # height of the screen
+
+        # calculate x and y coordinates for the Tk root window
+        x = (ws / 2) - (w / 2)
+        y = (hs / 2) - (h / 2)
+
+        # set the dimensions of the screen
+        # and where it is placed
+        self.errorBox.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+        self.errorBox.wait_window()
 
     def ok(self):
         self.errorBox.destroy()
 
+    def okEnt(self, event):
+        self.ok()
+
 
 def runApp():
     root = tk.Tk()
+
+    # Code from SO user - xxmbabanexx; sets open position for window based on screen dimensions
+    w = 1024  # width for the Tk root
+    h = 320  # height for the Tk root
+
+    # get screen width and height
+    ws = root.winfo_screenwidth()  # width of the screen
+    hs = root.winfo_screenheight()  # height of the screen
+
+    # calculate x and y coordinates for the Tk root window
+    x = (ws / 2) - (w / 2)
+    y = (hs / 2) - (h / 2)
+
+    # set the dimensions of the screen
+    # and where it is placed
+    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
     MainApplication(root).pack()
     root.mainloop()
 
 
 runApp()
-#error = ErrorPopUp('An Error Has Occurred with the following compound: ', 'Compound 1')
+
+# ---------------------------------------------
+# Test Code
+
+
+"""
+Recent Updates: 
+- Window opens consistently at center of screen
+- Custom Error Pop-ups implemented
+
+Issues:
+- Error "local variable 'strCAS' referenced before assignment"; likely when input is not a real compound
+- AntoineError - leads to "object of type 'NoneType' has no len()"
+"""
