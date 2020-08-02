@@ -385,7 +385,7 @@ class MainApplication(tk.Frame):
 
                     # prints data and information about calculation, includes compounds and user choices
                     self.descFrm = tk.Frame(master=self.win2)
-                    self.descFrm.pack(side="left", fill='y')
+                    self.descFrm.pack(side="right", fill='y')
                     self.descTitle = tk.Label(master=self.descFrm, text="Mixture Information :", font=('Times New Roman', 18, 'bold', 'underline'))
                     self.chkChoices = tk.Label(master=self.descFrm, text=self.strChoices, justify='left', font=('Times New Roman', 16))
                     self.chkAnswers = tk.Label(master=self.descFrm, text=self.strAnswers, justify='left', font=('Times New Roman', 16))
@@ -407,78 +407,153 @@ class MainApplication(tk.Frame):
 
                     self.descFrm.rowconfigure((2, 5), minsize=20)
 
+                    self.dataFrm = tk.Frame(master=self.win2)
+                    self.dataFrm.pack(side='bottom', fill='x')
+
+                    self.dataTxt = tk.StringVar()
+                    self.dataTxt.set('No Data Point Currently Selected')
+                    self.pointDisplay = tk.Label(master=self.dataFrm, textvariable=self.dataTxt, justify='left', font=('Times New Roman', 16), width=30)
+                    self.pointDisplay.grid(row=0, column=1)
+
+                    def data():
+                        """Gets all data and displays to user, new window?"""
+                        ## Display x vals, bub, and dew values in table using treeview
+
+                        dataTbl = tk.Toplevel()
+
+                        title = tk.Label(master=dataTbl, text="VLE Data", font=("Times New Roman", 30))
+                        title.grid(row=0, columnspan=3)
+
+                        tblFrm = tk.Frame(master=dataTbl)
+                        tblFrm.grid(row=1, column=0, columnspan=2, padx=5)
+
+                        # create Treeview with 3 columns
+                        cols = ('Mole Fraction : ' + compObjList[0].name, 'Bubble Point', 'Dew Point') # include compound for fraction
+                        listBox = ttk.Treeview(master=tblFrm, columns=cols, show='headings')
+                        # set column headings
+                        for col in cols:
+                            listBox.heading(col, text=col)
+                        listBox.pack(side='left')
+
+                        if self.chkbuttons.var_IsoBar.get():
+                            for i in range(0, len(self.xVals)):
+                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]), '%.3f' % (self.tLB[i]), '%.3f' % (self.tLD[i])))
+                        else: # Else: Isothermal
+                            for i in range(0, len(self.xVals)):
+                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]), '%.3f' % (self.pLB[i]), '%.3f' % (self.pLD[i])))
+
+                        yscrollbar = ttk.Scrollbar(master=tblFrm, orient="vertical", command=listBox.yview)
+                        yscrollbar.pack(side='right', fill='x')
+                        listBox.configure(xscrollcommand=yscrollbar.set)
+
+                        def close():
+                            dataTbl.destroy()
+
+                        closeBtn = tk.Button(master=dataTbl, text='Close Window', width=12, command=close)
+                        closeBtn.grid(row=2, column=0, columnspan=3) # centered
+
+                        dataTbl.protocol("WM_DELETE_WINDOW", close)  # window close protocol
+
+                        dataTbl.focus_set()  # grabs focus
+                        dataTbl.grab_set()  # locks interaction
+
+                        dataTbl.update()
+
+                        # Code from SO user - xxmbabanexx; sets open position for window based on screen dimensions
+                        w = dataTbl.winfo_width() # width for the Tk root
+                        h = dataTbl.winfo_height() + 5  # height for the Tk root
+
+                        # get screen width and height
+                        ws = dataTbl.winfo_screenwidth()  # width of the screen
+                        hs = dataTbl.winfo_screenheight()  # height of the screen
+
+                        # calculate x and y coordinates for the Tk root window
+                        x = (ws / 2) - (w / 2)
+                        y = (hs / 2) - (h / 2)
+
+                        # set the dimensions of the screen
+                        # and where it is placed
+                        dataTbl.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+                        dataTbl.wait_window()
+
+                    self.dataBtn = tk.Button(master=self.dataFrm, text='Show All Data', activebackground="blue", width=12, command=data)
+                    self.dataBtn.grid(row=0, column=3) # currently shifting locations based on str len
+
+                    self.dataFrm.columnconfigure((0, 2), minsize=50)
+
                     # calculations
-                    xVals = np.linspace(0, 1, 11)  # add change specificity
-                    yVals = np.linspace(0, 1, 11)
+                    self.xVals = np.linspace(0, 1, 11)  # add change specificity
+                    self.yVals = np.linspace(0, 1, 11)
                     if self.chkbuttons.var_IsoBar.get():
-                        tLB = compObjList[0].bubbleIsoBar(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
-                        tLD = compObjList[0].dewIsoBar(yVals, compObjList, self.temp, self.pTot)
-                        xPlot1 = tLB[0]
-                        xPlot2 = tLD[0]
+                        self.tLB = compObjList[0].bubbleIsoBar(self.xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        self.tLD = compObjList[0].dewIsoBar(self.yVals, compObjList, self.temp, self.pTot)
+                        xPlot1 = self.tLB[0]
+                        xPlot2 = self.tLD[0]
                         tempB = []
                         tempD = []
 
                         # convert calculated temperatures to user units
                         if self.tempUnitUse != 'K':
-                            for i in range(0, len(tLB[0])):
+                            for i in range(0, len(self.tLB[0])):
                                 if self.tempUnitUse == 'C':
-                                    tempB.append(tLB[1][i] - 273.15)
+                                    tempB.append(self.tLB[1][i] - 273.15)
                                 elif self.tempUnitUse == 'F':
-                                    tempB.append((tLB[1][i] - 273.15)*9/5 + 32)
+                                    tempB.append((self.tLB[1][i] - 273.15)*9/5 + 32)
 
-                            for i in range(0, len(tLD[0])):
+                            for i in range(0, len(self.tLD[0])):
                                 if self.tempUnitUse == 'C':
-                                    tempD.append(tLD[1][i] - 273.15)
+                                    tempD.append(self.tLD[1][i] - 273.15)
                                 elif self.tempUnitUse == 'F':
-                                    tempD.append((tLD[1][i] - 273.15) * 9 / 5 + 32)
-                            tLB = tempB
-                            tLD = tempD
+                                    tempD.append((self.tLD[1][i] - 273.15) * 9 / 5 + 32)
+                            self.tLB = tempB
+                            self.tLD = tempD
                         else:
-                            tLB = tLB[1]
-                            tLD = tLD[1]
+                            self.tLB = self.tLB[1]
+                            self.tLD = self.tLD[1]
 
                         # plot
-                        self.plottingIsoBar(xPlot1, tLB, xPlot2, tLD, compList)
+                        self.plottingIsoBar(xPlot1, self.tLB, xPlot2, self.tLD, compList)
                     elif self.chkbuttons.var_IsoTherm.get():
-                        pLB = compObjList[0].bubbleIsoTherm(xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
-                        pLD = compObjList[0].dewIsoTherm(yVals, compObjList, self.temp)
-                        xPlot1 = pLB[0]
-                        xPlot2 = pLD[0]
+                        self.pLB = compObjList[0].bubbleIsoTherm(self.xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        self.pLD = compObjList[0].dewIsoTherm(self.yVals, compObjList, self.temp)
+                        xPlot1 = self.pLB[0]
+                        xPlot2 = self.pLD[0]
                         tempB = []
                         tempD = []
 
                         # convert calculated pressures to user units
                         if self.presUnitUse != 'bar':
-                            for i in range(0, len(pLB[0])):
+                            for i in range(0, len(self.pLB[0])):
                                 if self.presUnitUse == 'atm':
-                                    tempB.append(pLB[1][i] / 1.01325)
+                                    tempB.append(self.pLB[1][i] / 1.01325)
                                 elif self.presUnitUse == 'mmHg':
-                                    tempB.append(pLB[1][i] / 1.01325 * 760)
+                                    tempB.append(self.pLB[1][i] / 1.01325 * 760)
                                 elif self.presUnitUse == 'Pa':
-                                    tempB.append(pLB[1][i] * 100000)
+                                    tempB.append(self.pLB[1][i] * 100000)
                                 elif self.presUnitUse == 'kPa':
-                                    tempB.append(pLB[1][i] * 100)
+                                    tempB.append(self.pLB[1][i] * 100)
 
-                            for i in range(0, len(pLD[0])):
+                            for i in range(0, len(self.pLD[0])):
                                 if self.presUnitUse == 'atm':
-                                    tempD.append(pLD[1][i] / 1.01325)
+                                    tempD.append(self.pLD[1][i] / 1.01325)
                                 elif self.presUnitUse == 'mmHg':
-                                    tempD.append(pLD[1][i] / 1.01325 * 760)
+                                    tempD.append(self.pLD[1][i] / 1.01325 * 760)
                                 elif self.presUnitUse == 'Pa':
-                                    tempD.append(pLD[1][i] * 100000)
+                                    tempD.append(self.pLD[1][i] * 100000)
                                 elif self.presUnitUse == 'kPa':
-                                    tempD.append(pLD[1][i] * 100)
-                            pLB = tempB
-                            pLD = tempD
+                                    tempD.append(self.pLD[1][i] * 100)
+                            self.pLB = tempB
+                            self.pLD = tempD
                         else:
-                            pLB = pLB[1]
-                            pLD = pLD[1]
+                            self.pLB = self.pLB[1]
+                            self.pLD = self.pLD[1]
 
                         # plot
-                        self.plottingIsoTherm(xPlot1, pLB, xPlot2, pLD, compList)
+                        self.plottingIsoTherm(xPlot1, self.pLB, xPlot2, self.pLD, compList)
 
                     # Creates border inbetween text and plot
-                    self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2, height=self.win2.winfo_height()).pack(side="left")
+                    self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2, height=self.win2.winfo_height()).pack(side="right")
 
                 # add functionality to clear previous so consecutive entries dont break it
 
@@ -588,34 +663,66 @@ class MainApplication(tk.Frame):
     def plottingIsoBar(self, xVals, tempListBub, yVals, tempListDew, compList):
         fig = Figure(figsize=(6, 6))
         a = fig.add_subplot(111)
-        a.plot(xVals, tempListBub, '-o', color='red', label='Bubble Point Curve')
-        a.plot(yVals, tempListDew, '-o', color='blue', label='Dew Point Curve')
+        a.plot(xVals, tempListBub, 'o', color='red', label='Bubble Point Curve', picker=5)
+        a.plot(yVals, tempListDew, 'o', color='blue', label='Dew Point Curve', picker=5)
         font = font_manager.FontProperties(family='Times New Roman', size=16)
-        legend = a.legend(loc='best', prop=font)
+        a.legend(loc='best', prop=font)
         fig.patch.set_facecolor('#F0F0F0')
         a.set_title("Isobaric VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]), fontsize=18, fontname='Times New Roman')
         a.set_ylabel("Temperature ({})".format(self.inputs.tempUnitVar.get()), fontsize=16, fontname='Times New Roman')
         a.set_xlabel("Mole Fraction of Component 1: {}".format(compList[0]), fontsize=16, fontname='Times New Roman')
 
         canvas = FigureCanvasTkAgg(fig, master=self.win2)
-        canvas.get_tk_widget().pack(side="right", fill='y')
+        canvas.get_tk_widget().pack(side="left", fill='y')
         canvas.draw()
+
+        """From matplotlib.org Object Picking example"""
+        def onpick(event):
+            thisline = event.artist
+            xdata = thisline.get_xdata()
+            ydata = thisline.get_ydata()
+            ind = event.ind
+            points = tuple(zip(xdata[ind], ydata[ind]))
+
+            xVal = '%.3f' % (points[0][0])  # Truncates values to 3 decimal places
+            yVal = '%.3f' % (points[0][1])
+
+            self.dataTxt.set('Selected Point: (' + xVal + ', ' + yVal + ')')
+            #print('onpick points:', points)
+
+        fig.canvas.mpl_connect('pick_event', onpick)
 
     def plottingIsoTherm(self, xVals, presListBub, yVals, presListDew, compList):
         fig = Figure(figsize=(6, 6))
         a = fig.add_subplot(111)
-        pltbub = a.plot(xVals, presListBub, '-o', color='red', label='Bubble Point Curve')
-        pltdew = a.plot(yVals, presListDew, '-o', color='blue', label='Dew Point Curve')
+        a.plot(xVals, presListBub, 'o', color='red', label='Bubble Point Curve', picker=5)
+        a.plot(yVals, presListDew, 'o', color='blue', label='Dew Point Curve', picker=5)
         font = font_manager.FontProperties(family='Times New Roman', size=16)
-        legend = a.legend(loc='best', prop=font)
+        a.legend(loc='best', prop=font)
         fig.patch.set_facecolor('#F0F0F0')
         a.set_title("Isothermal VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]), fontsize=18, fontname='Times New Roman')
         a.set_ylabel("Pressure ({})".format(self.inputs.presUnitVar.get()), fontsize=16, fontname='Times New Roman')
         a.set_xlabel("Mole Fraction of Component 1: {}".format(compList[0]), fontsize=16, fontname='Times New Roman')
 
         canvas = FigureCanvasTkAgg(fig, master=self.win2)
-        canvas.get_tk_widget().pack(side="right", fill='y')
+        canvas.get_tk_widget().pack(side="left", fill='y')
         canvas.draw()
+
+        """From matplotlib.org Object Picking example"""
+        def onpick(event):
+            thisline = event.artist
+            xdata = thisline.get_xdata()
+            ydata = thisline.get_ydata()
+            ind = event.ind
+            points = tuple(zip(xdata[ind], ydata[ind]))
+
+            xVal = '%.3f' % (points[0][0]) # Truncates values to 3 decimal places
+            yVal = '%.3f' % (points[0][1])
+
+            self.dataTxt.set('Selected Point: (' + xVal + ', ' + yVal + ')')
+            #print('onpick points:', points)
+
+        fig.canvas.mpl_connect('pick_event', onpick)
 
 
 # Custom Errors
@@ -770,8 +877,8 @@ def runApp():
     MainApplication(root).pack()
     root.mainloop()
 
-
-runApp()
+if __name__ == '__main__':
+    runApp()
 
 # ---------------------------------------------
 # Test Code
@@ -779,10 +886,12 @@ runApp()
 
 """
 Recent Updates: 
-- Window opens consistently at center of screen
-- Custom Error Pop-ups implemented
+- Clickable data points that display values, truncated to three decimal places
+- Button to display all data in pop-up window
+- New layout - switched plot/description sides
 
 Issues:
-- Error "local variable 'strCAS' referenced before assignment"; likely when input is not a real compound
+- Error "local variable 'strCAS' referenced before assignment"; likely when input is not a real compound, happens when error occurs first before retry
 - AntoineError - leads to "object of type 'NoneType' has no len()"
+- "'StringVar' object has no attriute 'tk'" when running isoTherm
 """
