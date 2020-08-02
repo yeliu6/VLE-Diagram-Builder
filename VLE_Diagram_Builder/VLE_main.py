@@ -34,10 +34,10 @@ class UserInputs(tk.Frame):
 
         self.comp1Text = tk.StringVar()
         self.ent_Name1 = tk.Entry(master=frm_userIn, textvariable=self.comp1Text, font=('Times New Roman', 16))
-        self.ent_Name1.grid(row=0, column=1, pady=5, padx=5, columnspan=2) #, columnspan=2
+        self.ent_Name1.grid(row=0, column=1, pady=5, padx=5, columnspan=2)
         self.comp2Text = tk.StringVar()
         self.ent_Name2 = tk.Entry(master=frm_userIn, textvariable=self.comp2Text, font=('Times New Roman', 16))
-        self.ent_Name2.grid(row=1, column=1, pady=5, padx=5, columnspan=2) #, columnspan=2
+        self.ent_Name2.grid(row=1, column=1, pady=5, padx=5, columnspan=2)
         self.pText = tk.StringVar()
         self.ent_Pres = tk.Entry(master=frm_userIn, textvariable=self.pText, width=10, font=('Times New Roman', 16)) #width = 10 is half size
         self.ent_Pres.grid(row=2, column=1, pady=5, padx=5)
@@ -59,6 +59,15 @@ class UserInputs(tk.Frame):
         self.tempUnitsDropDown.current(0)
         self.tempUnitsDropDown.grid(row=3, column=2, padx=5)
 
+        # User chooses specificity for calculations: how many points calculated for curve
+
+        self.specLbl = tk.Label(master=frm_userIn, text='Specificity : ', font=('Times New Roman', 16))
+        self.specLbl.grid(row=4, column=0, sticky='w', pady=5, padx=5)
+
+        self.specInput = tk.IntVar()
+        self.specInput.set(10)
+        self.specEnt = tk.Entry(master=frm_userIn, textvariable=self.specInput, width=10, font=('Times New Roman', 16))
+        self.specEnt.grid(row=4, column=1, pady=5, padx=5)
 
 class CheckButtons(tk.Frame):
     # checkbuttons for main window, choices;
@@ -73,24 +82,24 @@ class CheckButtons(tk.Frame):
         self.var_idl = tk.BooleanVar()
         self.var_idl.set(True)  # True for ease
         self.cbIdl = tk.Checkbutton(master=frm_chk, text="Use Raoult's Law", variable=self.var_idl, font=('Times New Roman', 16))
-        self.cbIdl.grid(row=0, column=0, sticky='w')
+        self.cbIdl.grid(row=0, column=0, sticky='w', pady=2)
         self.var_tRangeIgnore = tk.BooleanVar()
         self.var_tRangeIgnore.set(True)  # True for ease
         self.cbTemp = tk.Checkbutton(master=frm_chk, text="Ignore Antoine Temperature Range", variable=self.var_tRangeIgnore, font=('Times New Roman', 16))
-        self.cbTemp.grid(row=1, column=0, sticky='w')
+        self.cbTemp.grid(row=1, column=0, sticky='w', pady=2)
         self.var_comp = tk.BooleanVar()
         self.cbComp = tk.Checkbutton(master=frm_chk, text="Plot Component 2 (Default Component 1)", variable=self.var_comp, font=('Times New Roman', 16))
-        self.cbComp.grid(row=2, column=0, sticky='w')
+        self.cbComp.grid(row=2, column=0, sticky='w', pady=2)
 
         self.var_IsoBar = tk.BooleanVar()
         self.cbIsoBar = tk.Checkbutton(master=frm_chk, text="Calculate at Constant Pressure", variable=self.var_IsoBar,
                                        command=self.toggleTherm, font=('Times New Roman', 16))
-        self.cbIsoBar.grid(row=3, column=0, sticky='w')
+        self.cbIsoBar.grid(row=3, column=0, sticky='w', pady=2)
         self.var_IsoTherm = tk.BooleanVar()
         self.cbIsoTherm = tk.Checkbutton(master=frm_chk, text="Calculate at Constant Temperature",
                                          variable=self.var_IsoTherm,
                                          command=self.toggleBar, font=('Times New Roman', 16))
-        self.cbIsoTherm.grid(row=4, column=0, sticky='w')
+        self.cbIsoTherm.grid(row=4, column=0, sticky='w', pady=2)
         self.var_IsoTherm.set(True)
 
     # IsoBar and IsoTherm are mutually exclusive, clicking one toggles the other
@@ -128,9 +137,9 @@ class MainApplication(tk.Frame):
         self.chkbuttons.pack(side="top", fill="x", expand=True)
 
         # calculate button
-        self.calcBtn = tk.Button(master=master, text='Calculate', width=12, command=self.calculate,
+        self.calcBtn = tk.Button(master=self.master, text='Calculate', width=12, command=self.calculate,
                                  activebackground="blue", font=('Times New Roman', 16))
-        self.calcBtn.pack(side="bottom", pady=5)
+        self.calcBtn.pack(side='bottom', pady=5)
         # Bind Return key to calculate function, allowing user to press key to run program
         master.bind('<Return>', self.calcEnter)
 
@@ -167,6 +176,11 @@ class MainApplication(tk.Frame):
 
         ToolTip.CreateToolTip(self.inputs.presUnitsDropDown, text='Click to change the Pressure units')
         ToolTip.CreateToolTip(self.inputs.tempUnitsDropDown, text='Click to change the Temperature units')
+
+        ToolTip.CreateToolTip(self.inputs.specEnt, text='Enter the number of points that should\n'
+                                                          'be calculated per curve. The specified\n'
+                                                          'number will be the number of points beyond\n'
+                                                          'zero.')
 
     # finished?
     def inputReq(self):
@@ -483,8 +497,8 @@ class MainApplication(tk.Frame):
                     self.dataFrm.columnconfigure((0, 2), minsize=50)
 
                     # calculations
-                    self.xVals = np.linspace(0, 1, 11)  # add change specificity
-                    self.yVals = np.linspace(0, 1, 11)
+                    self.xVals = np.linspace(0, 1, self.inputs.specInput.get() + 1)  # add change specificity
+                    self.yVals = np.linspace(0, 1, self.inputs.specInput.get() + 1)
                     if self.chkbuttons.var_IsoBar.get():
                         self.tLB = compObjList[0].bubbleIsoBar(self.xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
                         self.tLD = compObjList[0].dewIsoBar(self.yVals, compObjList, self.temp, self.pTot)
@@ -886,12 +900,11 @@ if __name__ == '__main__':
 
 """
 Recent Updates: 
-- Clickable data points that display values, truncated to three decimal places
-- Button to display all data in pop-up window
-- New layout - switched plot/description sides
+- Added entry for the number of points to be calculated on the curve (specificity); default: 10
 
 Issues:
 - Error "local variable 'strCAS' referenced before assignment"; likely when input is not a real compound, happens when error occurs first before retry
 - AntoineError - leads to "object of type 'NoneType' has no len()"
+^^^ probably fixed by hard resetting after error
 - "'StringVar' object has no attriute 'tk'" when running isoTherm
 """
