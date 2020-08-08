@@ -1,16 +1,14 @@
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import font
 from tkinter import ttk as ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.font_manager as font_manager
 import numpy as np
 
-from VLE_Diagram_Builder import Compound # Class for creating object for each compound
-from VLE_Diagram_Builder import ToolTip
+import Compound # Class for creating object for each compound
+import ToolTip
 # Goal: Draw Dew/Bubble curves for VLE system
 
 
@@ -22,7 +20,7 @@ class UserInputs(tk.Frame):
         self.frame = tk.Frame(self.master)
         frm_userIn = tk.Frame(master=master)
         frm_userIn.pack(side="left")
-        # grid(row=0, column=0, padx=5, pady=5)
+
         self.lbl_Name1 = tk.Label(master=frm_userIn, text="Name of Compound 1 : ", font=('Times New Roman', 16))
         self.lbl_Name1.grid(row=0, column=0, sticky='w', pady=5, padx=5)
         self.lbl_Name2 = tk.Label(master=frm_userIn, text="Name of Compound 2 : ", font=('Times New Roman', 16))
@@ -39,7 +37,7 @@ class UserInputs(tk.Frame):
         self.ent_Name2 = tk.Entry(master=frm_userIn, textvariable=self.comp2Text, font=('Times New Roman', 16))
         self.ent_Name2.grid(row=1, column=1, pady=5, padx=5, columnspan=2)
         self.pText = tk.StringVar()
-        self.ent_Pres = tk.Entry(master=frm_userIn, textvariable=self.pText, width=10, font=('Times New Roman', 16)) #width = 10 is half size
+        self.ent_Pres = tk.Entry(master=frm_userIn, textvariable=self.pText, width=10, font=('Times New Roman', 16))
         self.ent_Pres.grid(row=2, column=1, pady=5, padx=5)
         self.tText = tk.StringVar()
         self.ent_Temp = tk.Entry(master=frm_userIn, textvariable=self.tText, width=10, font=('Times New Roman', 16))
@@ -60,7 +58,6 @@ class UserInputs(tk.Frame):
         self.tempUnitsDropDown.grid(row=3, column=2, padx=5)
 
         # User chooses specificity for calculations: how many points calculated for curve
-
         self.specLbl = tk.Label(master=frm_userIn, text='Specificity : ', font=('Times New Roman', 16))
         self.specLbl.grid(row=4, column=0, sticky='w', pady=5, padx=5)
 
@@ -81,14 +78,17 @@ class CheckButtons(tk.Frame):
         # grid(row=1, column=0, padx=5, pady=5)
         self.var_idl = tk.BooleanVar()
         self.var_idl.set(True)  # True for ease
-        self.cbIdl = tk.Checkbutton(master=frm_chk, text="Use Raoult's Law", variable=self.var_idl, font=('Times New Roman', 16))
+        self.cbIdl = tk.Checkbutton(master=frm_chk, text="Use Raoult's Law", variable=self.var_idl,
+                                    font=('Times New Roman', 16))
         self.cbIdl.grid(row=0, column=0, sticky='w', pady=2)
         self.var_tRangeIgnore = tk.BooleanVar()
         self.var_tRangeIgnore.set(True)  # True for ease
-        self.cbTemp = tk.Checkbutton(master=frm_chk, text="Ignore Antoine Temperature Range", variable=self.var_tRangeIgnore, font=('Times New Roman', 16))
+        self.cbTemp = tk.Checkbutton(master=frm_chk, text="Ignore Antoine Temperature Range",
+                                     variable=self.var_tRangeIgnore, font=('Times New Roman', 16))
         self.cbTemp.grid(row=1, column=0, sticky='w', pady=2)
         self.var_comp = tk.BooleanVar()
-        self.cbComp = tk.Checkbutton(master=frm_chk, text="Plot Component 2 (Default Component 1)", variable=self.var_comp, font=('Times New Roman', 16))
+        self.cbComp = tk.Checkbutton(master=frm_chk, text="Plot Component 2 (Default Component 1)",
+                                     variable=self.var_comp, font=('Times New Roman', 16))
         self.cbComp.grid(row=2, column=0, sticky='w', pady=2)
 
         self.var_IsoBar = tk.BooleanVar()
@@ -124,7 +124,8 @@ class MainApplication(tk.Frame):
         self.description = tk.Label(master, text='This application calculates and plots the bubble and dew curves of'
                                                  ' a binary mixture at a given temperature and pressure. The compound'
                                                  ' that is plotted can be changed and the complexity of the calculation'
-                                                 ' can also be modified.', wraplength=1024, justify='left', font=('Times New Roman', 16))
+                                                 ' can also be modified.', wraplength=1024, justify='left',
+                                    font=('Times New Roman', 16))
         self.description.pack(side="top", fill="x")
 
         # Rest of Window GUI goes here
@@ -182,7 +183,6 @@ class MainApplication(tk.Frame):
                                                           'number will be the number of points beyond\n'
                                                           'zero.')
 
-    # finished?
     def inputReq(self):
         entries = [self.inputs.ent_Name1, self.inputs.ent_Name2]
         try:
@@ -210,8 +210,6 @@ class MainApplication(tk.Frame):
                     return False # at least one item doesn't exist, T or P, will later set to default values for calc
         except InputError as e:
             e.__str__()
-            # msg = messagebox.showwarning('Error', e)
-
             self.inputError = 1 # sets sentry for later
             if not self.inputs.ent_Name1.get(): # sets focus to blank box
                 entries[0].focus_set()
@@ -222,9 +220,7 @@ class MainApplication(tk.Frame):
     def calcEnter(self, event):
         self.calculate()
 
-
     def calculate(self):
-        #fix selective inputs
         if self.inputReq():  # checks required entries, continues if all filled,
             # convert values to user choice: antoine (calculate normal then convert), graph
             self.presUnitUse = self.inputs.presUnitVar.get()
@@ -249,7 +245,7 @@ class MainApplication(tk.Frame):
                     self.temp = (float(self.inputs.ent_Temp.get()) - 32) * 5/9 + 273.15
             else:
                 self.temp = float(self.inputs.ent_Temp.get())
-        else:  # sets to STP 273.15K and 1atm # two cases false: no names or one num missing
+        else:  # sets to STP 273.15K and 1atm
             self.presUnitUse = self.inputs.presUnitVar.get()
             self.tempUnitUse = self.inputs.tempUnitVar.get()
             if not self.inputs.ent_Pres.get():
@@ -289,7 +285,7 @@ class MainApplication(tk.Frame):
                 else:
                     names = [self.inputs.ent_Name1.get(), self.inputs.ent_Name2.get()]
 
-                # checks if care about temperature range, if ignore, use first set of paramters
+                # checks if care about temperature range, if ignore, use first set of parameters
                 # Using Range also needs to update while plotting
                 if self.chkbuttons.var_tRangeIgnore.get():
                     for j in range(0, 2):  # Creates objects Compound for each input
@@ -356,8 +352,9 @@ class MainApplication(tk.Frame):
 
                     self.win2.resizable(False, False)
 
-                    # Checks if Temperature is in range for both compounds, only continues if true #fix error catch in else here
-                    self.strChoices = "Ideal Mixture: \nIgnore Antoine Temperature Range: \nUsing Component 2 as Basis: \nIsoBaric: \nIsoThermal:"
+                    # Checks if Temperature is in range for both compounds, only continues if true
+                    self.strChoices = "Ideal Mixture: \nIgnore Antoine Temperature Range: " \
+                                      "\nUsing Component 2 as Basis: \nIsoBaric: \nIsoThermal:"
                     self.strAnswers = "{} \n{} \n{} \n{} \n{}".format(
                         self.chkbuttons.var_idl.get(),
                         self.chkbuttons.var_tRangeIgnore.get(),
@@ -400,13 +397,20 @@ class MainApplication(tk.Frame):
                     # prints data and information about calculation, includes compounds and user choices
                     self.descFrm = tk.Frame(master=self.win2)
                     self.descFrm.pack(side="right", fill='y')
-                    self.descTitle = tk.Label(master=self.descFrm, text="Mixture Information :", font=('Times New Roman', 18, 'bold', 'underline'))
-                    self.chkChoices = tk.Label(master=self.descFrm, text=self.strChoices, justify='left', font=('Times New Roman', 16))
-                    self.chkAnswers = tk.Label(master=self.descFrm, text=self.strAnswers, justify='left', font=('Times New Roman', 16))
-                    self.nameComp1 = tk.Label(master=self.descFrm, text=(compObjList[0].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
-                    self.nameComp2 = tk.Label(master=self.descFrm, text=(compObjList[1].name + ' :'), justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
-                    self.descComp1 = tk.Label(master=self.descFrm, text=compObjList[0].description(), justify='left', font=('Times New Roman', 16))
-                    self.descComp2 = tk.Label(master=self.descFrm, text=compObjList[1].description(), justify='left', font=('Times New Roman', 16))
+                    self.descTitle = tk.Label(master=self.descFrm, text="Mixture Information :",
+                                              font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.chkChoices = tk.Label(master=self.descFrm, text=self.strChoices, justify='left',
+                                               font=('Times New Roman', 16))
+                    self.chkAnswers = tk.Label(master=self.descFrm, text=self.strAnswers, justify='left',
+                                               font=('Times New Roman', 16))
+                    self.nameComp1 = tk.Label(master=self.descFrm, text=(compObjList[0].name + ' :'),
+                                              justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.nameComp2 = tk.Label(master=self.descFrm, text=(compObjList[1].name + ' :'),
+                                              justify='left', font=('Times New Roman', 18, 'bold', 'underline'))
+                    self.descComp1 = tk.Label(master=self.descFrm, text=compObjList[0].description(),
+                                              justify='left', font=('Times New Roman', 16))
+                    self.descComp2 = tk.Label(master=self.descFrm, text=compObjList[1].description(),
+                                              justify='left', font=('Times New Roman', 16))
 
                     self.descTitle.grid(row=0, column=0, sticky='w')
 
@@ -426,12 +430,13 @@ class MainApplication(tk.Frame):
 
                     self.dataTxt = tk.StringVar()
                     self.dataTxt.set('No Data Point Currently Selected')
-                    self.pointDisplay = tk.Label(master=self.dataFrm, textvariable=self.dataTxt, justify='left', font=('Times New Roman', 16), width=30)
+                    self.pointDisplay = tk.Label(master=self.dataFrm, textvariable=self.dataTxt,
+                                                 justify='left', font=('Times New Roman', 16), width=30)
                     self.pointDisplay.grid(row=0, column=1)
 
                     def data():
-                        """Gets all data and displays to user, new window?"""
-                        ## Display x vals, bub, and dew values in table using treeview
+                        """Gets all data and displays to user, new window"""
+                        # Display x vals, bub, and dew values in table using treeview
 
                         dataTbl = tk.Toplevel()
 
@@ -442,7 +447,7 @@ class MainApplication(tk.Frame):
                         tblFrm.grid(row=1, column=0, columnspan=2, padx=5)
 
                         # create Treeview with 3 columns
-                        cols = ('Mole Fraction : ' + compObjList[0].name, 'Bubble Point', 'Dew Point') # include compound for fraction
+                        cols = ('Mole Fraction : ' + compObjList[0].name, 'Bubble Point', 'Dew Point')
                         listBox = ttk.Treeview(master=tblFrm, columns=cols, show='headings')
                         # set column headings
                         for col in cols:
@@ -451,10 +456,12 @@ class MainApplication(tk.Frame):
 
                         if self.chkbuttons.var_IsoBar.get():
                             for i in range(0, len(self.xVals)):
-                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]), '%.3f' % (self.tLB[i]), '%.3f' % (self.tLD[i])))
+                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]),
+                                                                  '%.3f' % (self.tLB[i]), '%.3f' % (self.tLD[i])))
                         else: # Else: Isothermal
                             for i in range(0, len(self.xVals)):
-                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]), '%.3f' % (self.pLB[i]), '%.3f' % (self.pLD[i])))
+                                listBox.insert("", "end", values=('%.3f' % (self.xVals[i]),
+                                                                  '%.3f' % (self.pLB[i]), '%.3f' % (self.pLD[i])))
 
                         yscrollbar = ttk.Scrollbar(master=tblFrm, orient="vertical", command=listBox.yview)
                         yscrollbar.pack(side='right', fill='x')
@@ -491,7 +498,8 @@ class MainApplication(tk.Frame):
 
                         dataTbl.wait_window()
 
-                    self.dataBtn = tk.Button(master=self.dataFrm, text='Show All Data', activebackground="blue", width=12, command=data)
+                    self.dataBtn = tk.Button(master=self.dataFrm, text='Show All Data',
+                                             activebackground="blue", width=12, command=data)
                     self.dataBtn.grid(row=0, column=3) # currently shifting locations based on str len
 
                     self.dataFrm.columnconfigure((0, 2), minsize=50)
@@ -500,13 +508,12 @@ class MainApplication(tk.Frame):
                     self.xVals = np.linspace(0, 1, self.inputs.specInput.get() + 1)  # add change specificity
                     self.yVals = np.linspace(0, 1, self.inputs.specInput.get() + 1)
                     if self.chkbuttons.var_IsoBar.get():
-                        self.tLB = compObjList[0].bubbleIsoBar(self.xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        self.tLB = compObjList[0].bubbleIsoBar(self.xVals, compObjList, self.temp, self.pTot)
                         self.tLD = compObjList[0].dewIsoBar(self.yVals, compObjList, self.temp, self.pTot)
                         xPlot1 = self.tLB[0]
                         xPlot2 = self.tLD[0]
                         tempB = []
                         tempD = []
-
                         # convert calculated temperatures to user units
                         if self.tempUnitUse != 'K':
                             for i in range(0, len(self.tLB[0])):
@@ -529,7 +536,7 @@ class MainApplication(tk.Frame):
                         # plot
                         self.plottingIsoBar(xPlot1, self.tLB, xPlot2, self.tLD, compList)
                     elif self.chkbuttons.var_IsoTherm.get():
-                        self.pLB = compObjList[0].bubbleIsoTherm(self.xVals, compObjList, self.temp, self.pTot)  # used compound always first in list
+                        self.pLB = compObjList[0].bubbleIsoTherm(self.xVals, compObjList, self.temp)
                         self.pLD = compObjList[0].dewIsoTherm(self.yVals, compObjList, self.temp)
                         xPlot1 = self.pLB[0]
                         xPlot2 = self.pLD[0]
@@ -567,9 +574,8 @@ class MainApplication(tk.Frame):
                         self.plottingIsoTherm(xPlot1, self.pLB, xPlot2, self.pLD, compList)
 
                     # Creates border inbetween text and plot
-                    self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2, height=self.win2.winfo_height()).pack(side="right")
-
-                # add functionality to clear previous so consecutive entries dont break it
+                    self.borderFrm = tk.Frame(master=self.win2, bg='black', width=2,
+                                              height=self.win2.winfo_height()).pack(side="right")
 
                 self.win2.mainloop()
             else:
@@ -577,8 +583,7 @@ class MainApplication(tk.Frame):
         except TempRangeError as e:
             self.tRangeError = 0 # resets error sentry
             e.__str__()
-            # messagebox.showwarning('Error', e)
-        except Exception as e: # general catch, temporary
+        except Exception as e: # general catch, for debugging
             print(e)
 
 
@@ -617,7 +622,6 @@ class MainApplication(tk.Frame):
                 return Trange
         except AntoineError as e:
             e.__str__()
-            # messagebox.showwarning('Error', e)
 
     # Get Boiling Point Data from NIST
     def boilPoint(self, compound):
@@ -672,17 +676,17 @@ class MainApplication(tk.Frame):
                 return boilT
         except BoilPointError as e:
             e.__str__()
-            # messagebox.showwarning('Error', e)
 
     def plottingIsoBar(self, xVals, tempListBub, yVals, tempListDew, compList):
         fig = Figure(figsize=(6, 6))
         a = fig.add_subplot(111)
-        a.plot(xVals, tempListBub, 'o', color='red', label='Bubble Point Curve', picker=5)
-        a.plot(yVals, tempListDew, 'o', color='blue', label='Dew Point Curve', picker=5)
+        a.plot(xVals, tempListBub, linestyle='--', marker='o', color='red', label='Bubble Point Curve', picker=5)
+        a.plot(yVals, tempListDew, linestyle='--', marker='o', color='blue', label='Dew Point Curve', picker=5)
         font = font_manager.FontProperties(family='Times New Roman', size=16)
         a.legend(loc='best', prop=font)
         fig.patch.set_facecolor('#F0F0F0')
-        a.set_title("Isobaric VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]), fontsize=18, fontname='Times New Roman')
+        a.set_title("Isobaric VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]),
+                    fontsize=18, fontname='Times New Roman')
         a.set_ylabel("Temperature ({})".format(self.inputs.tempUnitVar.get()), fontsize=16, fontname='Times New Roman')
         a.set_xlabel("Mole Fraction of Component 1: {}".format(compList[0]), fontsize=16, fontname='Times New Roman')
 
@@ -702,19 +706,20 @@ class MainApplication(tk.Frame):
             yVal = '%.3f' % (points[0][1])
 
             self.dataTxt.set('Selected Point: (' + xVal + ', ' + yVal + ')')
-            #print('onpick points:', points)
 
         fig.canvas.mpl_connect('pick_event', onpick)
 
     def plottingIsoTherm(self, xVals, presListBub, yVals, presListDew, compList):
         fig = Figure(figsize=(6, 6))
         a = fig.add_subplot(111)
-        a.plot(xVals, presListBub, 'o', color='red', label='Bubble Point Curve', picker=5)
-        a.plot(yVals, presListDew, 'o', color='blue', label='Dew Point Curve', picker=5)
+        # apparently deprecated picker
+        a.plot(xVals, presListBub, linestyle='--', marker='o', color='red', label='Bubble Point Curve', picker=5)
+        a.plot(yVals, presListDew, linestyle='--', marker='o', color='blue', label='Dew Point Curve', picker=5)
         font = font_manager.FontProperties(family='Times New Roman', size=16)
         a.legend(loc='best', prop=font)
         fig.patch.set_facecolor('#F0F0F0')
-        a.set_title("Isothermal VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]), fontsize=18, fontname='Times New Roman')
+        a.set_title("Isothermal VLE Diagram for Mixture:\n{} and {}".format(compList[0], compList[1]), fontsize=18,
+                    fontname='Times New Roman')
         a.set_ylabel("Pressure ({})".format(self.inputs.presUnitVar.get()), fontsize=16, fontname='Times New Roman')
         a.set_xlabel("Mole Fraction of Component 1: {}".format(compList[0]), fontsize=16, fontname='Times New Roman')
 
@@ -722,19 +727,18 @@ class MainApplication(tk.Frame):
         canvas.get_tk_widget().pack(side="left", fill='y')
         canvas.draw()
 
-        """From matplotlib.org Object Picking example"""
+        """From matplotlib.org Object Picking example""" ## Clicking on line selects connected point, need fix
         def onpick(event):
-            thisline = event.artist
-            xdata = thisline.get_xdata()
-            ydata = thisline.get_ydata()
-            ind = event.ind
-            points = tuple(zip(xdata[ind], ydata[ind]))
+                thisline = event.artist
+                xdata = thisline.get_xdata()
+                ydata = thisline.get_ydata()
+                ind = event.ind
+                points = tuple(zip(xdata[ind], ydata[ind]))
 
-            xVal = '%.3f' % (points[0][0]) # Truncates values to 3 decimal places
-            yVal = '%.3f' % (points[0][1])
+                xVal = '%.3f' % (points[0][0]) # Truncates values to 3 decimal places
+                yVal = '%.3f' % (points[0][1])
 
-            self.dataTxt.set('Selected Point: (' + xVal + ', ' + yVal + ')')
-            #print('onpick points:', points)
+                self.dataTxt.set('Selected Point: (' + xVal + ', ' + yVal + ')')
 
         fig.canvas.mpl_connect('pick_event', onpick)
 
@@ -753,7 +757,6 @@ class InputError(Exception):
         message = 'The Following Required User Input is Missing: '
         ErrorPopUp(message, self.missing)
         return
-        # return 'Required User Input Missing: {}'.format(self.missing)
 
 
 class AntoineError(Exception):
@@ -769,7 +772,6 @@ class AntoineError(Exception):
         message = 'No Antoine Parameter Data Found for the Following Compound: '
         ErrorPopUp(message, self.compound)
         return
-        # return 'No Antoine Parameter Data Found for the compound: {}'.format(self.compound)
 
 
 class TempRangeError(Exception):
@@ -791,7 +793,6 @@ class TempRangeError(Exception):
         errorCombined = self.compound + ' at ' + str(self.temp) + ' ' + self.units
         ErrorPopUp(message, errorCombined)
         return
-        # return 'No Antoine Parameters Could Be Found For the Compound {} at the Given Temperature of {} {}'.format(self.compound, self.temp, self.units)
 
 
 class BoilPointError(Exception):
@@ -807,7 +808,6 @@ class BoilPointError(Exception):
         message = 'The Boiling Point for the Following Compound Could Not Be Found: '
         ErrorPopUp(message, self.compound)
         return
-        # return 'The Boiling Point for {} Could Not Be Found'.format(self.compound)
 
 
 # Customs MessageBox for color purposes
@@ -829,7 +829,8 @@ class ErrorPopUp:
         self.btnFrame = tk.Frame(master=self.errorBox, bg='#c0c0c0')
         self.btnFrame.grid(row=1, column=0, sticky='NESW')
 
-        self.okBtn = tk.Button(master=self.btnFrame, text='Ok', command=self.ok, activebackground="blue", font=('Times New Roman', 12))
+        self.okBtn = tk.Button(master=self.btnFrame, text='Ok', command=self.ok, activebackground="blue",
+                               font=('Times New Roman', 12))
         self.okBtn.grid(row=0, column=4, sticky='EW', pady=5)
 
         self.btnFrame.columnconfigure([0, 1, 2, 3, 4, 5], weight=1)
@@ -894,17 +895,17 @@ def runApp():
 if __name__ == '__main__':
     runApp()
 
-# ---------------------------------------------
-# Test Code
-
 
 """
 Recent Updates: 
-- Added entry for the number of points to be calculated on the curve (specificity); default: 10
+- Now plots dotted lines in between points
+- Code cleaned up
 
 Issues:
 - Error "local variable 'strCAS' referenced before assignment"; likely when input is not a real compound, happens when error occurs first before retry
 - AntoineError - leads to "object of type 'NoneType' has no len()"
 ^^^ probably fixed by hard resetting after error
 - "'StringVar' object has no attriute 'tk'" when running isoTherm
+- Clicking on plotted lines displays point values
+- plotting: matplotlib picker deprecation warning
 """
